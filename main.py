@@ -63,32 +63,41 @@ class Player(pygame.sprite.Sprite):
         super().__init__(all_sprites)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
+        self.direction = 'R'
+        self.particle_positions = {'R': (self.rect.x + 3, self.rect.y + self.rect.w),
+                                   'L': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'U': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'D': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'RU': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'RD': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'LU': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
+                                   'LD': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w)}
 
     def update(self, *args):
-        if args:
-            self.move = [0, 0]
-            pressed = pygame.key.get_pressed()
-            if pressed[pygame.K_RIGHT]:
-                self.move[0] += 2
+        self.move = [0, 0]
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_RIGHT]:
+            self.move[0] += 2
 
-            if pressed[pygame.K_LEFT]:
-                self.move[0] -= 2
+        if pressed[pygame.K_LEFT]:
+            self.move[0] -= 2
 
-            if pressed[pygame.K_DOWN]:
-                self.move[1] += 2
+        if pressed[pygame.K_DOWN]:
+            self.move[1] += 2
 
-            if pressed[pygame.K_UP]:
-                self.move[1] -= 2
-        if not args:
-            self.rect = self.rect.move(*self.move)
-        particle_pos = (self.rect.x + self.rect.h, self.rect.y + self.rect.w)
+        if pressed[pygame.K_UP]:
+            self.move[1] -= 2
+
+        self.rect = self.rect.move(*self.move)
+        particle_pos = (self.rect.x, self.rect.y + self.rect.w)
         create_particles(particle_pos)
 
         if pygame.sprite.spritecollideany(self, enemies):
             self.kill()
 
-    def get_pos(self):
-        return self.rect.center
+
+def get_pos(self):
+    return self.rect.center
 
 
 player = Player()
@@ -100,8 +109,6 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-
-            all_sprites.update(event)
         all_sprites.update()
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
