@@ -6,7 +6,6 @@ import random
 
 def load_image(name, colorkey=(255, 255, 255)):
     fullname = os.path.join('data', name)
-    # если файл не существует, то выходим
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
@@ -15,8 +14,8 @@ def load_image(name, colorkey=(255, 255, 255)):
 
 
 pygame.init()
-FPS = 120
-SIZE = WIDTH, HEIGHT = 500, 500
+FPS = 60
+SIZE = WIDTH, HEIGHT = 1000, 1000
 GRAVITY = 1
 screen_rect = 0, 0, *SIZE
 screen = pygame.display.set_mode(SIZE)
@@ -81,22 +80,24 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update(self, *args):
-        if args:
-            self.move = [0, 0]
-            pressed = pygame.key.get_pressed()
-            if pressed[pygame.K_RIGHT]:
-                self.move[0] += 2
+        self.move = [0, 0]
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_RIGHT]:
+            self.move[0] += 2
 
-            if pressed[pygame.K_LEFT]:
-                self.move[0] -= 2
+        if pressed[pygame.K_LEFT]:
+            self.move[0] -= 2
 
-            if pressed[pygame.K_DOWN]:
-                self.move[1] += 2
+        if pressed[pygame.K_DOWN]:
+            self.move[1] += 2
 
-            if pressed[pygame.K_UP]:
-                self.move[1] -= 2
-        if not args:
-            self.rect = self.rect.move(*self.move)
+        if pressed[pygame.K_UP]:
+            self.move[1] -= 2
+
+        if 0 not in self.move:
+            self.move = list(map(lambda x: x // 2, self.move))
+
+        self.rect = self.rect.move(*self.move)
         # create_particles(self.rect.center)
 
         if pygame.sprite.spritecollideany(self, enemies):
@@ -130,10 +131,62 @@ class Enemy(pygame.sprite.Sprite):
             self.rect = self.rect.move(*move)
 
 
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, center, move):
+        super().__init__(enemies, all_sprites)
+        im = load_image('star.png')
+        self.image = pygame.transform.scale(im, (10, 10))
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.move = move
+
+    def update(self, *args):
+        if self.rect.y > HEIGHT or self.rect.y < 0 or self.rect.x > WIDTH or self.rect.x < 0:
+            self.kill()
+        else:
+            self.rect = self.rect.move(*self.move)
+
+
+class ShootingEnemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(enemies, all_sprites)
+        self.image = load_image('mario.png')
+        self.rect = self.image.get_rect()
+        self.rect.center = (400, 400)
+        self.walk_range = 100
+        self.counter = 0
+
+    def update(self, *args):
+        if player.alive():
+            # target_x, target_y = player.get_pos()
+            # move = [0, 0]
+            # if self.rect.x + self.walk_range > target_x:
+            #     move[0] -= 1
+            # elif self.rect.x - self.walk_range < target_x:
+            #     move[0] += 1
+            #
+            # if self.rect.y + self.walk_range > target_y:
+            #     move[1] -= 1
+            # elif self.rect.y - self.walk_range < target_y:
+            #     move[1] += 1
+            #
+            # if move != [0, 0]:
+            #     self.rect = self.rect.move(*move)
+            self.counter += clock.get_time()
+            if self.counter > 500:
+                self.shoot()
+                print(1111)
+                self.counter = 0
+
+    def shoot(self):
+        move = [1, 2]
+        bullet = Bullet(self.rect.center, move)
+
+
 player = Player()
 all_sprites.add(player)
 
-enemy = Enemy()
+enemy = ShootingEnemy()
 enemies.add(enemy)
 
 
@@ -142,13 +195,11 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-
-            all_sprites.update(event)
-        all_sprites.update()
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
         pygame.display.flip()
-        clock.tick(FPS)
+        ticks = clock.tick(FPS)
+        all_sprites.update(ticks)
 
 
 main()
