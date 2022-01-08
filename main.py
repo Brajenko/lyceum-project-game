@@ -24,6 +24,7 @@ clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
+draw_first = pygame.sprite.Group()
 
 
 def terminate():
@@ -32,45 +33,36 @@ def terminate():
 
 
 class Particle(pygame.sprite.Sprite):
-    def __init__(self, pos, dx, dy):
+    def __init__(self, x, y):
         super().__init__(all_sprites)
-        self.image = pygame.transform.scale(load_image("star.png"), (10, 10))
+        self.image = pygame.Surface((5, 5))
+        self.image.fill((0, 0, 0))
+        self.image.set_colorkey((0, 0, 0))
+        pygame.draw.circle(self.image, (255, 255, 255), (5, 5), 5)
         self.rect = self.image.get_rect()
-        self.velocity = [dx, dy]
-        self.finish_y = pos[1] + 20
-        self.rect.x, self.rect.y = pos
+        self.rect.center = (x, y)
 
     def update(self, *args):
-        self.rect.x += self.velocity[0]
-        self.rect.y += self.velocity[1]
-        # убиваем
-        if self.rect.y > self.finish_y:
+        alpha = 128
+        self.image.fill((255, 255, 255, alpha), None, pygame.BLEND_RGBA_MULT)
+        alpha -= 2
+        if alpha < 0:
             self.kill()
-        # if not self.rect.colliderect(screen_rect):
-        #     self.kill()
 
 
 def create_particles(position):
-    particle_count = 1
-    numbers = range(-5, 3)
-    for _ in range(particle_count):
-        Particle(position, random.choice(numbers), random.choice(numbers))
+    for i in range(2):
+        x, y = position
+        Particle(x + i, y)
+        Particle(x, y + i)
+        Particle(x, y)
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
-        super().__init__(all_sprites)
+        super().__init__(all_sprites, draw_first)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
-        self.direction = 'R'
-        self.particle_positions = {'R': (self.rect.x + 3, self.rect.y + self.rect.w),
-                                   'L': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'U': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'D': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'RU': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'RD': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'LU': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w),
-                                   'LD': (self.rect.x + 3 + self.rect.h, self.rect.y + self.rect.w)}
 
     def update(self, *args):
         self.move = [0, 0]
@@ -87,15 +79,11 @@ class Player(pygame.sprite.Sprite):
         if pressed[pygame.K_UP]:
             self.move[1] -= 2
 
-
         self.rect = self.rect.move(*self.move)
-        particle_pos = (self.rect.x, self.rect.y + self.rect.w)
-        create_particles(particle_pos)
+        create_particles(self.rect.center)
 
         if 0 not in self.move:
             self.move = list(map(lambda x: x // 2, self.move))
-
-        # create_particles(self.rect.center)
 
         if pygame.sprite.spritecollideany(self, enemies):
             self.kill()
@@ -160,8 +148,9 @@ class ShootingEnemy(pygame.sprite.Sprite):
 player = Player()
 all_sprites.add(player)
 
-enemy = ShootingEnemy()
-enemies.add(enemy)
+
+# enemy = ShootingEnemy()
+# enemies.add(enemy)
 
 def main():
     while True:
@@ -171,6 +160,7 @@ def main():
         all_sprites.update()
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
+        draw_first.draw(screen)
         pygame.display.flip()
         ticks = clock.tick(FPS)
         all_sprites.update(ticks)
