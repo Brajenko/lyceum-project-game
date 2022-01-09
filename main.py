@@ -24,6 +24,7 @@ clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
+draw_first = pygame.sprite.Group()
 
 
 def terminate():
@@ -32,50 +33,34 @@ def terminate():
 
 
 class Particle(pygame.sprite.Sprite):
-    # сгенерируем частицы разного размера
-    fire = [load_image("star.png")]
-    fire.append(pygame.transform.scale(fire[0], (10, 10)))
-
-    def __init__(self, pos, dx, dy):
+    def __init__(self, x, y):
         super().__init__(all_sprites)
-        self.image = random.choice(self.fire)
+        self.image = pygame.Surface((5, 5))
+        self.image.fill((0, 0, 0))
+        self.image.set_colorkey((0, 0, 0))
+        pygame.draw.circle(self.image, (255, 255, 255), (5, 5), 5)
         self.rect = self.image.get_rect()
-
-        # у каждой частицы своя скорость — это вектор
-        self.velocity = [dx, dy]
-        # и свои координаты
-        self.finish_y = pos[1] + 20
-        self.rect.x, self.rect.y = pos
-
-        # гравитация будет одинаковой (значение константы)
-        self.gravity = GRAVITY
+        self.rect.center = (x, y)
 
     def update(self, *args):
-        # применяем гравитационный эффект:
-        # движение с ускорением под действием гравитации
-        self.velocity[1] += self.gravity
-        # перемещаем частицу
-        self.rect.x += self.velocity[0]
-        self.rect.y += self.velocity[1]
-        # убиваем
-        if self.rect.y > self.finish_y:
+        alpha = 128
+        self.image.fill((255, 255, 255, alpha), None, pygame.BLEND_RGBA_MULT)
+        alpha -= 2
+        if alpha < 0:
             self.kill()
-        # if not self.rect.colliderect(screen_rect):
-        #     self.kill()
 
 
 def create_particles(position):
-    # количество создаваемых частиц
-    particle_count = 5
-    # возможные скорости
-    numbers = range(-5, 3)
-    for _ in range(particle_count):
-        Particle(position, random.choice(numbers), random.choice(numbers))
+    for i in range(2):
+        x, y = position
+        Particle(x + i, y)
+        Particle(x, y + i)
+        Particle(x, y)
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
-        super().__init__(all_sprites)
+        super().__init__(all_sprites, draw_first)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
 
@@ -98,52 +83,33 @@ class Player(pygame.sprite.Sprite):
             self.move = list(map(lambda x: x // 2, self.move))
 
         self.rect = self.rect.move(*self.move)
-        # create_particles(self.rect.center)
+        create_particles(self.rect.center)
 
         if pygame.sprite.spritecollideany(self, enemies):
             self.kill()
 
-    def get_pos(self):
-        return self.rect.center
 
+def get_pos(self):
+    return self.rect.center
 
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__(enemies, all_sprites)
-        self.image = load_image('star.png')
-        self.rect = self.image.get_rect()
-        self.rect.center = (400, 400)
-
-    def update(self, *args):
-        if player.alive():
-            target_x, target_y = player.get_pos()
-            move = [0, 0]
-            if self.rect.x > target_x:
-                move[0] -= 1
-            elif self.rect.x < target_x:
-                move[0] += 1
-
-            if self.rect.y > target_y:
-                move[1] -= 1
-            elif self.rect.y < target_y:
-                move[1] += 1
-
-            self.rect = self.rect.move(*move)
 
 player = Player()
 all_sprites.add(player)
 
-enemy = Enemy()
-enemies.add(enemy)
 
+# enemy = ShootingEnemy()
+# enemies.add(enemy)
 
 def main():
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
+
+        all_sprites.update()
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
+        draw_first.draw(screen)
         pygame.display.flip()
         ticks = clock.tick(FPS)
         all_sprites.update(ticks)
