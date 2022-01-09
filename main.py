@@ -130,63 +130,10 @@ class Enemy(pygame.sprite.Sprite):
 
             self.rect = self.rect.move(*move)
 
-
-class Bullet(pygame.sprite.Sprite):
-    def __init__(self, center, move):
-        super().__init__(enemies, all_sprites)
-        im = load_image('star.png')
-        self.image = pygame.transform.scale(im, (10, 10))
-        self.rect = self.image.get_rect()
-        self.rect.center = center
-        self.move = move
-
-    def update(self, *args):
-        if self.rect.y > HEIGHT or self.rect.y < 0 or self.rect.x > WIDTH or self.rect.x < 0:
-            self.kill()
-        else:
-            self.rect = self.rect.move(*self.move)
-
-
-class ShootingEnemy(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__(enemies, all_sprites)
-        self.image = load_image('mario.png')
-        self.rect = self.image.get_rect()
-        self.rect.center = (400, 400)
-        self.walk_range = 100
-        self.counter = 0
-
-    def update(self, *args):
-        if player.alive():
-            # target_x, target_y = player.get_pos()
-            # move = [0, 0]
-            # if self.rect.x + self.walk_range > target_x:
-            #     move[0] -= 1
-            # elif self.rect.x - self.walk_range < target_x:
-            #     move[0] += 1
-            #
-            # if self.rect.y + self.walk_range > target_y:
-            #     move[1] -= 1
-            # elif self.rect.y - self.walk_range < target_y:
-            #     move[1] += 1
-            #
-            # if move != [0, 0]:
-            #     self.rect = self.rect.move(*move)
-            self.counter += clock.get_time()
-            if self.counter > 500:
-                self.shoot()
-                print(1111)
-                self.counter = 0
-
-    def shoot(self):
-        move = [1, 2]
-        bullet = Bullet(self.rect.center, move)
-
-
 player = Player()
 all_sprites.add(player)
 
-enemy = ShootingEnemy()
+enemy = Enemy()
 enemies.add(enemy)
 
 
