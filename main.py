@@ -4,9 +4,9 @@ import pygame
 import os
 import random
 
-
 BULLET_V = 5
 SHOOTING_ENEMY_WALK_RANGE = 100
+
 
 def load_image(name, colorkey=(255, 255, 255)):
     fullname = os.path.join('data', name)
@@ -15,6 +15,20 @@ def load_image(name, colorkey=(255, 255, 255)):
         sys.exit()
     image = pygame.image.load(fullname)
     return image
+
+
+def count_move(pos, dest):
+    move = [0, 0]
+    if pos[0] > dest[0]:
+        move[0] -= 1
+    elif pos[0] < dest[0]:
+        move[0] += 1
+
+    if pos[1] > dest[1]:
+        move[1] -= 1
+    elif pos[1] < dest[1]:
+        move[1] += 1
+    return move
 
 
 pygame.init()
@@ -156,7 +170,7 @@ class ShootingEnemy(pygame.sprite.Sprite):
         super().__init__(enemies, all_sprites)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
-        self.rect.center = (1000, 1000)
+        self.rect.center = (419, 1000)
         self.counter = 0
 
         self.moving = True
@@ -171,22 +185,16 @@ class ShootingEnemy(pygame.sprite.Sprite):
         else:
             self.dest[1] = player.rect.centery - SHOOTING_ENEMY_WALK_RANGE
 
-        self.move = self.count_move(self.dest)
-
-
-
-
     def update(self, *args):
         if player.alive():
             if self.moving:
-                if set(self.rect.center) == set(self.dest):
-                    self.moving = False
-                self.rect = self.rect.move(self.move)
-
-            self.counter += clock.get_time()
-            if self.counter > 500:
-                # self.shoot()
-                self.counter = 0
+                move = count_move(self.rect.center, self.dest)
+                self.rect = self.rect.move(move)
+            else:
+                self.counter += clock.get_time()
+                if self.counter > 500:
+                    # self.shoot()
+                    self.counter = 0
 
     def shoot(self):
         dx = player.rect.centerx - self.rect.centerx
@@ -199,19 +207,6 @@ class ShootingEnemy(pygame.sprite.Sprite):
             y_speed *= -1
         move = [x_speed, y_speed]
         bullet = Bullet(self.rect.center, move)
-
-    def count_move(self, dest):
-        move = [0, 0]
-        if self.rect.x > dest[0]:
-            move[0] -= 1
-        elif self.rect.x < dest[0]:
-            move[0] += 1
-
-        if self.rect.y > dest[1]:
-            move[1] -= 1
-        elif self.rect.y < dest[1]:
-            move[1] += 1
-        return move
 
 
 player = Player()
