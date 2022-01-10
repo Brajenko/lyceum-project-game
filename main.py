@@ -1,7 +1,11 @@
+import math
 import sys
 import pygame
 import os
 import random
+
+BULLET_V = 5
+SHOOTING_ENEMY_WALK_RANGE = 100
 
 
 def load_image(name, colorkey=(255, 255, 255)):
@@ -11,6 +15,20 @@ def load_image(name, colorkey=(255, 255, 255)):
         sys.exit()
     image = pygame.image.load(fullname)
     return image
+
+
+def count_move(pos, dest):
+    move = [0, 0]
+    if pos[0] > dest[0]:
+        move[0] -= 1
+    elif pos[0] < dest[0]:
+        move[0] += 1
+
+    if pos[1] > dest[1]:
+        move[1] -= 1
+    elif pos[1] < dest[1]:
+        move[1] += 1
+    return move
 
 
 pygame.init()
@@ -91,6 +109,89 @@ class Player(pygame.sprite.Sprite):
 
 def get_pos(self):
     return self.rect.center
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(enemies, all_sprites)
+        self.image = load_image('star.png')
+        self.rect = self.image.get_rect()
+        self.rect.center = (400, 400)
+
+    def update(self, *args):
+        if player.alive():
+            target_x, target_y = player.get_pos()
+            move = [0, 0]
+            if self.rect.x > target_x:
+                move[0] -= 1
+            elif self.rect.x < target_x:
+                move[0] += 1
+
+            if self.rect.y > target_y:
+                move[1] -= 1
+            elif self.rect.y < target_y:
+                move[1] += 1
+
+            self.rect = self.rect.move(*move)
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, center, move):
+        super().__init__(enemies, all_sprites)
+        im = load_image('star.png')
+        self.image = pygame.transform.scale(im, (10, 10))
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.move = move
+
+    def update(self, *args):
+        if self.rect.y > HEIGHT or self.rect.y < 0 or self.rect.x > WIDTH or self.rect.x < 0:
+            self.kill()
+        else:
+            self.rect = self.rect.move(*self.move)
+
+
+class ShootingEnemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(enemies, all_sprites)
+        self.image = load_image('mario.png')
+        self.rect = self.image.get_rect()
+        self.rect.center = (419, 1000)
+        self.counter = 0
+
+        self.moving = True
+        self.dest = [0, 0]
+        if self.rect.centerx > player.rect.centerx:
+            self.dest[0] = player.rect.centerx + SHOOTING_ENEMY_WALK_RANGE
+        else:
+            self.dest[0] = player.rect.centerx - SHOOTING_ENEMY_WALK_RANGE
+
+        if self.rect.centery > player.rect.centery:
+            self.dest[1] = player.rect.centery + SHOOTING_ENEMY_WALK_RANGE
+        else:
+            self.dest[1] = player.rect.centery - SHOOTING_ENEMY_WALK_RANGE
+
+    def update(self, *args):
+        if player.alive():
+            if self.moving:
+                move = count_move(self.rect.center, self.dest)
+                self.rect = self.rect.move(move)
+            else:
+                self.counter += clock.get_time()
+                if self.counter > 500:
+                    # self.shoot()
+                    self.counter = 0
+
+    def shoot(self):
+        dx = player.rect.centerx - self.rect.centerx
+        dy = player.rect.centery - self.rect.centery
+        x_speed = BULLET_V / (math.sqrt(1 + ((dy ** 2) / (dx ** 2))))
+        y_speed = BULLET_V / (math.sqrt(1 + ((dx ** 2) / (dy ** 2))))
+        if dx < 0:
+            x_speed *= -1
+        if dy < 0:
+            y_speed *= -1
+        move = [x_speed, y_speed]
+        bullet = Bullet(self.rect.center, move)
 
 
 player = Player()
