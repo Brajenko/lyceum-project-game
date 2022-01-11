@@ -8,9 +8,10 @@ BULLET_V = 3
 SHOOTING_ENEMY_POSITIONS = [(100, 100), (100, 900), (100, 500), (900, 100), (900, 900), (900, 500), (500, 100),
                             (500, 900), (250, 100), (750, 100), (250, 900), (750, 900), (100, 250), (100, 750),
                             (900, 250), (900, 750)]
-print(SHOOTING_ENEMY_POSITIONS)
-SHOOTING_SPEED = 2
+SHOOTING_SPEED = 0.5  # bullets/sec
 ENEMY_SPEED = 1
+PLAYER_SPEED = 3
+WAVE = 0
 
 
 def load_image(name, colorkey=(255, 255, 255)):
@@ -45,8 +46,10 @@ pygame.display.set_caption('Марио?')
 clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
+all_enemies = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
-draw_first = pygame.sprite.Group()
+shooting_enemies = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
 
 
 def terminate():
@@ -63,26 +66,26 @@ class Particle(pygame.sprite.Sprite):
         pygame.draw.circle(self.image, (255, 255, 255), (5, 5), 5)
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
+        self.alpha = 128
 
     def update(self, *args):
-        alpha = 128
-        self.image.fill((255, 255, 255, alpha), None, pygame.BLEND_RGBA_MULT)
-        alpha -= 2
-        if alpha < 0:
+        global k
+        self.image.fill((255, 255, 255, self.alpha), None, pygame.BLEND_RGBA_MULT)
+        self.alpha -= 0.3
+        if self.alpha < 0:
             self.kill()
 
 
 def create_particles(position):
-    for i in range(2):
-        x, y = position
-        Particle(x + i, y)
-        Particle(x, y + i)
-        Particle(x, y)
+    x, y = position
+    Particle(x + 1, y)
+    Particle(x, y + 1)
+    Particle(x, y)
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
-        super().__init__(all_sprites, draw_first)
+        super().__init__(all_sprites, player_group)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
         self.rect.center = (500, 500)
@@ -91,25 +94,24 @@ class Player(pygame.sprite.Sprite):
         self.move = [0, 0]
         pressed = pygame.key.get_pressed()
         if pressed[pygame.K_RIGHT]:
-            self.move[0] += 2
+            self.move[0] += PLAYER_SPEED
 
         if pressed[pygame.K_LEFT]:
-            self.move[0] -= 2
+            self.move[0] -= PLAYER_SPEED
 
         if pressed[pygame.K_DOWN]:
-            self.move[1] += 2
+            self.move[1] += PLAYER_SPEED
 
         if pressed[pygame.K_UP]:
-            self.move[1] -= 2
+            self.move[1] -= PLAYER_SPEED
 
         if 0 not in self.move:
-            self.move = list(map(lambda x: x // 2, self.move))
+            self.move = list(map(lambda x: (x // math.sqrt(PLAYER_SPEED)) + 1, self.move))
 
         self.rect = self.rect.move(*self.move)
         create_particles(self.rect.center)
 
-        if pygame.sprite.spritecollideany(self, enemies):
-            self.kill()
+        pygame.sprite.spritecollide(self, shooting_enemies, dokill=True)
 
     def get_pos(self):
         return self.rect.center
@@ -117,7 +119,7 @@ class Player(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos):
-        super().__init__(enemies, all_sprites)
+        super().__init__(enemies, all_enemies, all_sprites)
         self.image = load_image('star.png')
         self.rect = self.image.get_rect()
         self.rect.center = pos
@@ -126,6 +128,7 @@ class Enemy(pygame.sprite.Sprite):
         if player.alive():
             move = count_move(self.rect.center, player.get_pos())
             self.rect = self.rect.move(*move)
+            pygame.sprite.spritecollide(self, player_group, dokill=True)
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -158,7 +161,7 @@ def find_closest_point(pos, points):
 
 class ShootingEnemy(pygame.sprite.Sprite):
     def __init__(self, pos):
-        super().__init__(enemies, all_sprites)
+        super().__init__(all_enemies, shooting_enemies, all_sprites)
         self.image = load_image('mario.png')
         self.rect = self.image.get_rect()
         self.rect.center = pos
@@ -169,20 +172,23 @@ class ShootingEnemy(pygame.sprite.Sprite):
 
     def update(self, *args):
         if player.alive():
+            if pygame.sprite.collide_mask(self, player):
+                self.kill()
             if self.moving:
                 move = count_move(self.rect.center, self.dest)
                 self.rect = self.rect.move(move)
                 if self.rect.center == self.dest:
                     self.moving = False
             else:
-                self.counter += clock.get_time()
-                if self.counter > 500:
-                    self.shoot()
+                self.counter += 1
+                if self.counter == 60 // SHOOTING_SPEED:
+                    # self.shoot()
                     self.counter = 0
 
     def shoot(self):
         dx = player.rect.centerx - self.rect.centerx
         dy = player.rect.centery - self.rect.centery
+        x_speed = y_speed = 0
         try:
             x_speed = BULLET_V / (math.sqrt(1 + ((dy ** 2) / (dx ** 2))))
             y_speed = BULLET_V / (math.sqrt(1 + ((dx ** 2) / (dy ** 2))))
@@ -202,10 +208,6 @@ class ShootingEnemy(pygame.sprite.Sprite):
             bullet = Bullet(self.rect.center, move)
 
 
-player = Player()
-all_sprites.add(player)
-
-
 def spawn_enemy(pos: (int, int), shooting=False):
     if shooting:
         enemy = ShootingEnemy(pos)
@@ -217,10 +219,12 @@ def spawn_enemy(pos: (int, int), shooting=False):
 def generate_random_pos(shooting: bool) -> (int, int):
     if shooting:
         positions = [list(range(0, 101)) + list(range(900, 1001)), list(range(0, 1001))]
-        random.shuffle(positions)
-        x = random.choice(positions[0])
-        y = random.choice(positions[1])
-        return x, y
+    else:
+        positions = [list(range(0, 301)) + list(range(700, 1001)), list(range(0, 1001))]
+    random.shuffle(positions)
+    x = random.choice(positions[0])
+    y = random.choice(positions[1])
+    return x, y
 
 
 def random_spawn(n: int, shooting=False) -> None:
@@ -229,27 +233,32 @@ def random_spawn(n: int, shooting=False) -> None:
         spawn_enemy(pos, shooting)
 
 
-random_spawn(5, shooting=True)
+player = Player()
+all_sprites.add(player)
 
 
 def main():
+    random_spawn(3, shooting=True)
     spawn_delay = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pass
 
-        spawn_delay += 1
+        # spawn_delay += 1
         if spawn_delay == 100:
             pass
 
         if spawn_delay == 1000:
             spawn_delay = 0
 
+
         all_sprites.update()
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
-        draw_first.draw(screen)
+        player_group.draw(screen)
         pygame.display.flip()
         ticks = clock.tick(FPS)
         all_sprites.update(ticks)
