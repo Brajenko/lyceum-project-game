@@ -37,6 +37,20 @@ def count_move(pos, dest):
     return move
 
 
+def generate_new_wave(n, shooting, enemy):
+    if enemy > 4:
+        enemy += 4
+    else:
+        enemy += 2
+
+    if shooting > 2:
+        shooting += 2
+    else:
+        shooting += 1
+
+    return n + 1, shooting, enemy
+
+
 pygame.init()
 FPS = 60
 SIZE = WIDTH, HEIGHT = 1000, 1000
@@ -83,6 +97,12 @@ def create_particles(position):
     Particle(x, y)
 
 
+def modify_speed(v):
+    if v > 0:
+        return v // math.sqrt(v) + 1
+    return -(abs(v) // math.sqrt(abs(v))) + 1
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(all_sprites, player_group)
@@ -106,7 +126,8 @@ class Player(pygame.sprite.Sprite):
             self.move[1] -= PLAYER_SPEED
 
         if 0 not in self.move:
-            self.move = list(map(lambda x: (x // math.sqrt(PLAYER_SPEED)) + 1, self.move))
+            self.move = list(map(lambda x: modify_speed(x), self.move))
+            print(self.move)
 
         self.rect = self.rect.move(*self.move)
         create_particles(self.rect.center)
@@ -233,13 +254,17 @@ def random_spawn(n: int, shooting=False) -> None:
         spawn_enemy(pos, shooting)
 
 
+def spawn_wave(wave):
+    random_spawn(wave[1], shooting=True)
+    random_spawn(wave[2], shooting=False)
+
+
 player = Player()
 all_sprites.add(player)
 
 
 def main():
-    random_spawn(3, shooting=True)
-    spawn_delay = 0
+    wave = 0, 0, 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -247,13 +272,9 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pass
 
-        # spawn_delay += 1
-        if spawn_delay == 100:
-            pass
-
-        if spawn_delay == 1000:
-            spawn_delay = 0
-
+        if not all_enemies.sprites():
+            wave = generate_new_wave(*wave)
+            spawn_wave(wave)
 
         all_sprites.update()
         screen.fill(pygame.Color('black'))
