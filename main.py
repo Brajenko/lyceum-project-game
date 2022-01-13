@@ -2,6 +2,7 @@ import math
 import sys
 import pygame
 import os
+import pygame.freetype
 import random
 
 BULLET_V = 3
@@ -11,13 +12,11 @@ SHOOTING_ENEMY_POSITIONS = [(100, 100), (100, 900), (100, 500), (900, 100), (900
 SHOOTING_SPEED = 0.5  # bullets/sec
 ENEMY_SPEED = 1
 PLAYER_SPEED = 3
-WAVE = 0
 
 
 def load_image(name, colorkey=(255, 255, 255)):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
     image = pygame.image.load(fullname)
     return image
@@ -54,6 +53,8 @@ def generate_new_wave(n, shooting, enemy):
 pygame.init()
 FPS = 60
 SIZE = WIDTH, HEIGHT = 1000, 1000
+INGAME_FONT = pygame.freetype.Font("pixelfont.ttf", 24)
+TRANSITION_FONT = pygame.freetype.Font("pixelfont.ttf", 100)
 screen_rect = 0, 0, *SIZE
 screen = pygame.display.set_mode(SIZE)
 pygame.display.set_caption('Марио?')
@@ -100,7 +101,7 @@ def create_particles(position):
 def modify_speed(v):
     if v > 0:
         return v // math.sqrt(v) + 1
-    return -(abs(v) // math.sqrt(abs(v))) + 1
+    return -(abs(v) // math.sqrt(abs(v)) + 1)
 
 
 class Player(pygame.sprite.Sprite):
@@ -127,7 +128,6 @@ class Player(pygame.sprite.Sprite):
 
         if 0 not in self.move:
             self.move = list(map(lambda x: modify_speed(x), self.move))
-            print(self.move)
 
         self.rect = self.rect.move(*self.move)
         create_particles(self.rect.center)
@@ -166,6 +166,7 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
         else:
             self.rect = self.rect.move(*self.move)
+        pygame.sprite.spritecollide(self, player_group, dokill=True)
 
 
 def find_closest_point(pos, points):
@@ -178,6 +179,25 @@ def find_closest_point(pos, points):
             minn = dist
 
     return ans
+
+
+class WaveText(pygame.sprite.Sprite):
+    def __init__(self, group, wave):
+        # НЕОБХОДИМО вызвать конструктор родительского класса Sprite.
+        # Это очень важно !!!
+        super().__init__(group)
+        self.image, self.rect = TRANSITION_FONT.render("WAVE {}".format(wave[0]), (255, 255, 255))
+        self.rect = self.image.get_rect()
+        self.rect.x = -self.image.get_width()
+        self.rect.y = 0
+        self.move = True
+
+    def update(self, *args):
+        if self.move:
+            self.rect = self.rect.move(5, 0)
+            if self.rect.left >= 0:
+                self.rect.left = 0
+                self.move = False
 
 
 class ShootingEnemy(pygame.sprite.Sprite):
@@ -203,7 +223,7 @@ class ShootingEnemy(pygame.sprite.Sprite):
             else:
                 self.counter += 1
                 if self.counter == 60 // SHOOTING_SPEED:
-                    # self.shoot()
+                    self.shoot()
                     self.counter = 0
 
     def shoot(self):
@@ -227,6 +247,14 @@ class ShootingEnemy(pygame.sprite.Sprite):
                 y_speed *= -1
             move = [x_speed, y_speed]
             bullet = Bullet(self.rect.center, move)
+
+
+def text_to_screen(screen, text, x, y, size=50,
+                   color=(200, 000, 000), font_type=''):
+    text = str(text)
+    font = pygame.font.Font(font_type, size)
+    text = font.render(text, True, color)
+    screen.blit(text, (x, y))
 
 
 def spawn_enemy(pos: (int, int), shooting=False):
@@ -259,25 +287,40 @@ def spawn_wave(wave):
     random_spawn(wave[2], shooting=False)
 
 
+def check_pos(pos):
+    mouse = pygame.sprite.Sprite()
+    mouse.image = pygame.Surface((1, 1))
+    mouse.rect = mouse.image.get_rect()
+    mouse.rect.center = pos
+    pygame.sprite.spritecollide(mouse, enemies, dokill=True)
+
+
+player = Player()
+all_sprites.add(player)
+SPAWN_EVENT = pygame.event.Event(pygame.USEREVENT)
+
 player = Player()
 all_sprites.add(player)
 
 
 def main():
     wave = 0, 0, 0
+    wave_text = WaveText(all_sprites, wave)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                pass
+                check_pos(event.pos)
 
         if not all_enemies.sprites():
             wave = generate_new_wave(*wave)
+            wave_text.kill()
+            wave_text = WaveText(all_sprites, wave)
             spawn_wave(wave)
 
-        all_sprites.update()
         screen.fill(pygame.Color('black'))
+        all_sprites.update()
         all_sprites.draw(screen)
         player_group.draw(screen)
         pygame.display.flip()
