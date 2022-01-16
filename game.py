@@ -14,6 +14,7 @@ SHOOTING_ENEMY_POSITIONS = [(100, 100), (100, 900), (100, 500), (900, 100), (900
                             (900, 250), (900, 750)]
 SHOOTING_SPEED = 0.5  # bullets/sec
 ENEMY_SPEED = 1
+ANIMATION_SPEED = 5  # fps
 PLAYER_SPEED = 3
 player_name = 'User'
 WASD_MOVEMENT = {'R': pygame.K_d,
@@ -31,20 +32,29 @@ def load_image(name, colorkey=(255, 255, 255)):
     if not os.path.isfile(fullname):
         sys.exit()
     image = pygame.image.load(fullname)
+    image.set_colorkey(colorkey)
     return image
 
 
-def count_move(pos, dest):
+def count_move(pos, dest, return_orient=False):
     move = [0, 0]
+    orient = 'D'
     if pos[0] > dest[0]:
         move[0] -= 1
+        orient = 'L'
+
     elif pos[0] < dest[0]:
         move[0] += 1
+        orient = 'R'
 
     if pos[1] > dest[1]:
         move[1] -= 1
+        orient = 'D'
     elif pos[1] < dest[1]:
         move[1] += 1
+        orient = 'D'
+    if return_orient:
+        return move, orient
     return move
 
 
@@ -63,7 +73,7 @@ def generate_new_wave(n, shooting, enemy):
 
 
 pygame.init()
-FPS = 60
+FPS = 50
 SIZE = WIDTH, HEIGHT = 1000, 1000
 INGAME_FONT = pygame.freetype.Font("pixelfont.ttf", 24)
 TRANSITION_FONT = pygame.freetype.Font("pixelfont.ttf", 100)
@@ -119,31 +129,62 @@ def modify_speed(v):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(all_sprites, player_group)
-        self.image = load_image('mario.png')
-        self.rect = self.image.get_rect()
-        self.rect.center = (500, 500)
-        self.name = 'User'
+        self.frames = []
+        sheet = load_image('main_hero.png')
+        self.cut_sheet(sheet, 4, 4)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(500, 500)
+        self.d = {
+            'R': self.frames[2],
+            'L': self.frames[1],
+            'U': self.frames[3],
+            'D': self.frames[0]
+        }
+        self.image = self.d['L'][self.cur_frame]
+        self.counter = 0
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            a = []
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                a.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+            self.frames.append(a)
 
     def update(self, *args):
         self.move = [0, 0]
         pressed = pygame.key.get_pressed()
+        orientation = 'D'
         if pressed[movement['R']]:
             self.move[0] += PLAYER_SPEED
+            orientation = 'R'
 
         if pressed[movement['L']]:
             self.move[0] -= PLAYER_SPEED
+            orientation = 'L'
 
         if pressed[movement['D']]:
             self.move[1] += PLAYER_SPEED
+            orientation = 'D'
 
         if pressed[movement['U']]:
             self.move[1] -= PLAYER_SPEED
+            orientation = 'U'
 
         if 0 not in self.move:
             self.move = list(map(lambda x: modify_speed(x), self.move))
 
         self.rect = self.rect.move(*self.move)
         create_particles(self.rect.center)
+        self.counter += 1
+        if self.counter == 60 // ANIMATION_SPEED:
+            self.cur_frame = (self.cur_frame + 1) % 4
+            self.image = self.d[orientation][self.cur_frame]
+            self.counter = 0
 
         pygame.sprite.spritecollide(self, shooting_enemies, dokill=True)
 
@@ -151,18 +192,58 @@ class Player(pygame.sprite.Sprite):
         return self.rect.center
 
 
+def split_list(lst, n):
+    return [lst[i: i + n] for i in range(0, len(lst), n)]
+
+
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__(enemies, all_enemies, all_sprites)
-        self.image = load_image('star.png')
-        self.rect = self.image.get_rect()
+        self.frames = []
+        self.d = self.cut_sheet(load_image('enemies.png'), 12, 8)
+        self.cur_frame = 0
         self.rect.center = pos
+        self.color = random.choice(['Y', 'G', 'DB', 'R', 'W', 'P', 'B', 'O'])
+        self.counter = 0
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(8):
+            a = []
+            for i in range(12):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                a.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+            self.frames.append(a)
+
+        self.image = self.frames[0][0]
+        self.frames = [split_list(i, 3) for i in self.frames]
+
+        d = {}
+        for i, dest in enumerate(['D', 'L', 'R', 'U']):
+            d[dest] = {}
+            for j, color in enumerate(['Y', 'G', 'DB', 'R']):
+                d[dest][color] = self.frames[i][j]
+
+        self.frames = self.frames[4:]
+        for i, dest in enumerate(['D', 'L', 'R', 'U']):
+            for j, color in enumerate(['W', 'P', 'B', 'O']):
+                d[dest][color] = self.frames[i][j]
+
+        return d
 
     def update(self, *args):
         if player.alive():
-            move = count_move(self.rect.center, player.get_pos())
+            move, orientation = count_move(self.rect.center, player.get_pos(), return_orient=True)
             self.rect = self.rect.move(*move)
             pygame.sprite.spritecollide(self, player_group, dokill=True)
+
+        self.counter += 1
+        if self.counter == 60 // ANIMATION_SPEED:
+            self.cur_frame = (self.cur_frame + 1) % 3
+            self.image = self.d[orientation][self.color][self.cur_frame]
+            self.counter = 0
 
 
 class Bullet(pygame.sprite.Sprite):
