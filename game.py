@@ -325,46 +325,40 @@ def start_game():
     wave_text = WaveText(all_sprites, wave)
     spawn_delayed = False
     while True:
-        if pause:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    check_pos(event.pos)
-                if event.type == SPAWN_EVENT.type:
-                    spawn_wave(wave)
-                    spawn_delayed = False
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        pause = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                check_pos(event.pos)
+            if event.type == SPAWN_EVENT.type:
+                spawn_wave(wave)
+                spawn_delayed = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    ingame_menu()
 
-            if not all_enemies.sprites() and not spawn_delayed:
-                wave = generate_new_wave(*wave)
-                wave_text.kill()
-                wave_text = WaveText(all_sprites, wave)
-                pygame.time.set_timer(SPAWN_EVENT, 1000, loops=1)
-                spawn_delayed = True
+        if not all_enemies.sprites() and not spawn_delayed:
+            wave = generate_new_wave(*wave)
+            wave_text.kill()
+            wave_text = WaveText(all_sprites, wave)
+            pygame.time.set_timer(SPAWN_EVENT, 1000, loops=1)
+            spawn_delayed = True
 
-            if not player.alive():
-                all_sprites.empty()
-                all_enemies.empty()
-                wave_text.kill()
-                results.write_new(player_name, wave[0])
-                finish_menu()
-                return
-            all_sprites.update()
-            all_sprites.update(ticks)
+        if not player.alive():
+            all_sprites.empty()
+            all_enemies.empty()
+            wave_text.kill()
+            results.write_new(player_name, wave[0])
+            finish_menu()
+            return
 
+        all_sprites.update()
+        ticks = clock.tick(FPS)
+        all_sprites.update(ticks)
         screen.fill(pygame.Color('black'))
         all_sprites.draw(screen)
         player_group.draw(screen)
         pygame.display.flip()
-        ticks = clock.tick(FPS)
-
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    pause = False
 
 
 def set_player_name(name):
@@ -410,18 +404,32 @@ def finish_menu():
 
 def settings_menu():
     menu = pygame_menu.Menu('Settings', 1000, 500, theme=menu_theme)
-    default = bool(movement == WASD_MOVEMENT)
+    default = int(movement != WASD_MOVEMENT)
     menu.add.selector('choose controls', ['wasd', 'arrows'], onchange=change_controls, default=default)
     menu.add.button('Back', start_menu)
     menu.mainloop(screen)
 
 
 def ingame_menu():
-    menu = pygame_menu.Menu('Settings', 1000, 500, theme=menu_theme)
-    default = bool(movement == WASD_MOVEMENT)
-    menu.add.selector('choose controls', ['wasd', 'arrows'], onchange=change_controls, default=default)
-    menu.add.button('Back', start_menu)
+    menu = pygame_menu.Menu('Pause', 1000, 500, theme=menu_theme)
+    menu.add.button('continue', pygame_menu.events.CLOSE)
+    menu.add.button('restart', restart)
+    menu.add.button('Leave game', leave_game)
     menu.mainloop(screen)
+
+
+def leave_game():
+    all_sprites.empty()
+    all_enemies.empty()
+    player_group.empty()
+    start_menu()
+
+
+def restart():
+    all_sprites.empty()
+    all_enemies.empty()
+    player_group.empty()
+    start_game()
 
 
 start_menu()

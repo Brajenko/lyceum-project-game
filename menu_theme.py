@@ -1,5 +1,4 @@
 import pygame_menu
-import os
 
 black = (0, 0, 0, 0)
 font = 'pixelfont.ttf'
@@ -13,6 +12,5 @@ menu_theme = pygame_menu.Theme(background_color=black,
                                                                                               arrow_vertical_offset=0,
                                                                                               blink_ms=100),
                                widget_alignment=pygame_menu.locals.ALIGN_CENTER,
-                               title_offset=(350, 100),
-
+                               title_offset=(350, 100)
                                )
