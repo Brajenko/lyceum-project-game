@@ -234,6 +234,7 @@ class Enemy(pygame.sprite.Sprite):
         return d
 
     def update(self, *args):
+        orientation = 'D'
         if player.alive():
             move, orientation = count_move(self.rect.center, player.get_pos(), return_orient=True)
             self.rect = self.rect.move(*move)
@@ -295,7 +296,7 @@ class WaveText(pygame.sprite.Sprite):
 class ShootingEnemy(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__(all_enemies, shooting_enemies, all_sprites)
-        self.image = load_image('mario.png')
+        self.image = load_image('shooting_enemy.png')
         self.rect = self.image.get_rect()
         self.rect.center = pos
         self.counter = 0
