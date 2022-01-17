@@ -5,7 +5,7 @@ import os
 import pygame.freetype
 import random
 import pygame_menu
-from menu_theme import menu_theme
+from menu_theme import start_menu_theme, finish_menu_theme, ingame_menu_theme
 import results
 
 BULLET_V = 3
@@ -33,6 +33,14 @@ def load_image(name, colorkey=(255, 255, 255)):
         sys.exit()
     image = pygame.image.load(fullname)
     image.set_colorkey(colorkey)
+    return image
+
+
+def load_background(name):
+    fullname = os.path.join('data/ingame_backgrounds', name)
+    if not os.path.isfile(fullname):
+        sys.exit()
+    image = pygame.image.load(fullname)
     return image
 
 
@@ -79,7 +87,7 @@ INGAME_FONT = pygame.freetype.Font("pixelfont.ttf", 24)
 TRANSITION_FONT = pygame.freetype.Font("pixelfont.ttf", 100)
 screen_rect = 0, 0, *SIZE
 screen = pygame.display.set_mode(SIZE)
-pygame.display.set_caption('Марио?')
+pygame.display.set_caption('Game')
 clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
@@ -195,6 +203,19 @@ class Player(pygame.sprite.Sprite):
 
 def split_list(lst, n):
     return [lst[i: i + n] for i in range(0, len(lst), n)]
+
+
+class BackgroudImage:
+    def __init__(self):
+        self.ingame_images = os.listdir(path="data/ingame_backgrounds")
+
+    def for_wave(self):
+        name = random.choice(self.ingame_images)
+        return self.scale_im(load_background(name))
+
+    def scale_im(self, im):
+        pygame.transform.scale(im, (1000, 1000))
+        return im
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -404,6 +425,7 @@ def spawn_player():
 
 def start_game():
     pause = False
+    bi = BackgroudImage()
     spawn_player()
     wave = 0, 0, 0
     wave_text = WaveText(all_sprites, wave)
@@ -419,13 +441,21 @@ def start_game():
                 spawn_delayed = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    ingame_menu()
+                    def close():
+                        menu.disable()
+
+                    menu = pygame_menu.Menu('Pause', 1000, 1000, theme=ingame_menu_theme)
+                    menu.add.button('continue', close)
+                    menu.add.button('restart', restart)
+                    menu.add.button('Leave game', leave_game)
+                    menu.mainloop(screen)
 
         if not all_enemies.sprites() and not spawn_delayed:
             wave = generate_new_wave(*wave)
             wave_text.kill()
             wave_text = WaveText(all_sprites, wave)
             pygame.time.set_timer(SPAWN_EVENT, 1000, loops=1)
+            backgroung = bi.for_wave()
             spawn_delayed = True
 
         if not player.alive():
@@ -439,7 +469,7 @@ def start_game():
         all_sprites.update()
         ticks = clock.tick(FPS)
         all_sprites.update(ticks)
-        screen.fill(pygame.Color('black'))
+        screen.blit(backgroung, (0, 0))
         all_sprites.draw(screen)
         player_group.draw(screen)
         pygame.display.flip()
@@ -459,8 +489,8 @@ def change_controls(controls: str, *args):
 
 
 def start_menu():
-    menu = pygame_menu.Menu('Pygame Project', 1000, 500,
-                            theme=menu_theme)
+    menu = pygame_menu.Menu('Do you want to launch rocket?', 1000, 1000,
+                            theme=start_menu_theme)
     menu.add.text_input('Name -', default=player_name, onchange=set_player_name)
     menu.add.button('Play', start_game)
     menu.add.button('Quit', pygame_menu.events.EXIT)
@@ -469,25 +499,38 @@ def start_menu():
         menu.add.label('Best Result - {1} By {0}'.format(*best_res))
     else:
         menu.add.label('No results yet')
-
     menu.add.button('Settings', settings_menu)
+
+    back = pygame_menu.baseimage.BaseImage(
+        image_path=os.path.join('data', 'finish_menu.jpg'),
+        drawing_mode=pygame_menu.baseimage.IMAGE_MODE_FILL
+    )
+
+    menu.background_color = back
+
     menu.mainloop(screen)
 
 
 def finish_menu():
-    menu = pygame_menu.Menu('Oh, you lose', 1000, 500,
-                            theme=menu_theme)
+    menu = pygame_menu.Menu('Oh, you lose, rocket is falling', 1000, 1000,
+                            theme=finish_menu_theme)
     prev_result = results.get_last()
     menu.add.label('Your result - {}'.format(prev_result[1]))
     menu.add.button('Try again', start_game)
     menu.add.button('Return to main menu', start_menu)
     menu.add.button('Quit', pygame_menu.events.EXIT)
     menu.add.label('Best Result - {1} By {0}'.format(*results.get_best()))
+    back = pygame_menu.baseimage.BaseImage(
+        image_path=os.path.join('data', 'finish_menu.jpg'),
+        drawing_mode=pygame_menu.baseimage.IMAGE_MODE_REPEAT_XY
+    )
+
+    menu.background_color = back
     menu.mainloop(screen)
 
 
 def settings_menu():
-    menu = pygame_menu.Menu('Settings', 1000, 500, theme=menu_theme)
+    menu = pygame_menu.Menu('Settings', 1000, 500, theme=start_menu_theme)
     default = int(movement != WASD_MOVEMENT)
     menu.add.selector('choose controls', ['wasd', 'arrows'], onchange=change_controls, default=default)
     menu.add.button('Back', start_menu)
@@ -495,7 +538,7 @@ def settings_menu():
 
 
 def ingame_menu():
-    menu = pygame_menu.Menu('Pause', 1000, 500, theme=menu_theme)
+    menu = pygame_menu.Menu('Pause', 1000, 1000, theme=ingame_menu_theme)
     menu.add.button('continue', pygame_menu.events.CLOSE)
     menu.add.button('restart', restart)
     menu.add.button('Leave game', leave_game)
