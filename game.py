@@ -79,7 +79,7 @@ INGAME_FONT = pygame.freetype.Font("pixelfont.ttf", 24)
 TRANSITION_FONT = pygame.freetype.Font("pixelfont.ttf", 100)
 screen_rect = 0, 0, *SIZE
 screen = pygame.display.set_mode(SIZE)
-pygame.display.set_caption('Марио?')
+pygame.display.set_caption('Game')
 clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
