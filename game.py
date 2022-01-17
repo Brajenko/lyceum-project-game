@@ -133,7 +133,8 @@ class Player(pygame.sprite.Sprite):
         sheet = load_image('main_hero.png')
         self.cut_sheet(sheet, 4, 4)
         self.cur_frame = 0
-        self.image = self.frames[self.cur_frame]
+        self.image = self.frames[self.cur_frame][0]
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.rect.move(500, 500)
         self.d = {
             'R': self.frames[2],
@@ -296,11 +297,12 @@ class WaveText(pygame.sprite.Sprite):
 class ShootingEnemy(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__(all_enemies, shooting_enemies, all_sprites)
-        self.image = load_image('shooting_enemy.png')
+        self.image = load_image('shooting_enemy.jpg', colorkey=(48, 20, 58))
+        self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect()
         self.rect.center = pos
         self.counter = 0
-
+        self.mask = pygame.mask.from_surface(self.image)
         self.moving = True
         self.dest = find_closest_point(self.rect.center, SHOOTING_ENEMY_POSITIONS)
 
