@@ -530,7 +530,7 @@ def finish_menu():
 
 
 def settings_menu():
-    menu = pygame_menu.Menu('Settings', 1000, 500, theme=start_menu_theme)
+    menu = pygame_menu.Menu('Settings', 1000, 1000, theme=start_menu_theme)
     default = int(movement != WASD_MOVEMENT)
     menu.add.selector('choose controls', ['wasd', 'arrows'], onchange=change_controls, default=default)
     menu.add.button('Back', start_menu)
